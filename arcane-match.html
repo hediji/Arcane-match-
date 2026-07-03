@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcane Match — A Crystal Alchemy Puzzle</title>
+<meta name="description" content="Arcane Match: swap glowing crystals, chain combos, and fill the cauldron across escalating alchemy trials.">
+<meta property="og:title" content="Arcane Match">
+<meta property="og:description" content="A crystal-matching puzzle trial. Swap, combo, and climb the levels.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1b1024">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 90,30 90,70 50,95 10,70 10,30' fill='%23e0a83d'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Quicksand:wght@500;600;700&display=swap');
+
+  :root{
+    --bg-deep: #1b1024;
+    --bg-panel: #241531;
+    --gold: #e0a83d;
+    --gold-soft: #f0c876;
+    --text-light: #f2e9db;
+    --ruby: #c0304a;
+    --sapphire: #2f6fa8;
+    --emerald: #3f8f5f;
+    --amethyst: #8a52c9;
+    --citrine: #d9a93b;
+    --rose: #d9799a;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 20% 10%, #34204a 0%, transparent 45%),
+      radial-gradient(circle at 85% 85%, #2a1a3d 0%, transparent 50%),
+      var(--bg-deep);
+    font-family:'Quicksand', sans-serif;
+    color: var(--text-light);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 24px 12px 60px;
+  }
+
+  h1{
+    font-family:'Cinzel', serif;
+    letter-spacing: 2px;
+    font-size: clamp(28px, 6vw, 40px);
+    margin: 6px 0 2px;
+    color: var(--gold-soft);
+    text-shadow: 0 0 18px rgba(224,168,61,0.35);
+  }
+
+  .subtitle{
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #b6a8c9;
+    margin-bottom: 18px;
+  }
+
+  .hud{
+    display:flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .stat{
+    background: var(--bg-panel);
+    border: 1px solid rgba(224,168,61,0.25);
+    border-radius: 12px;
+    padding: 8px 16px;
+    text-align:center;
+    min-width: 76px;
+  }
+  .stat .label{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#a898bd; }
+  .stat .value{ font-family:'Cinzel', serif; font-size:22px; color: var(--gold-soft); }
+
+  .icon-btn{
+    background: var(--bg-panel);
+    border: 1px solid rgba(224,168,61,0.25);
+    border-radius: 12px;
+    width: 44px;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--gold-soft);
+  }
+  .icon-btn:hover{ filter: brightness(1.15); }
+
+  .cauldron-wrap{
+    width: min(340px, 90vw);
+    margin-bottom: 18px;
+  }
+  .cauldron-label{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#a898bd; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .cauldron-bar{
+    height: 14px;
+    border-radius: 8px;
+    background: #150c1e;
+    border: 1px solid rgba(224,168,61,0.3);
+    overflow:hidden;
+  }
+  .cauldron-fill{
+    height:100%;
+    width:0%;
+    background: linear-gradient(90deg, var(--emerald), var(--gold));
+    transition: width 0.4s ease;
+  }
+
+  .game-wrap{
+    position: relative;
+    width: min(420px, 92vw);
+  }
+
+  #board{
+    display:grid;
+    grid-template-columns: repeat(8, minmax(0,1fr));
+    gap: 5px;
+    width: 100%;
+    aspect-ratio: 1/1;
+    background: var(--bg-panel);
+    padding: 8px;
+    border-radius: 16px;
+    border: 1px solid rgba(224,168,61,0.25);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 0 40px rgba(0,0,0,0.3);
+  }
+
+  .cell{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    border-radius: 8px;
+  }
+
+  .crystal{
+    width: 78%;
+    height: 78%;
+    clip-path: polygon(50% 0%, 90% 25%, 90% 75%, 50% 100%, 10% 75%, 10% 25%);
+    transition: transform 0.15s ease;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4) inset, 0 2px 6px rgba(0,0,0,0.35);
+  }
+
+  .cell.selected .crystal{
+    transform: scale(0.82);
+    outline: 2px solid var(--gold-soft);
+    outline-offset: 2px;
+  }
+
+  .crystal.c0{ background: linear-gradient(160deg, #e0577a, var(--ruby)); }
+  .crystal.c1{ background: linear-gradient(160deg, #5aa3d8, var(--sapphire)); }
+  .crystal.c2{ background: linear-gradient(160deg, #5fc98a, var(--emerald)); }
+  .crystal.c3{ background: linear-gradient(160deg, #b482e6, var(--amethyst)); }
+  .crystal.c4{ background: linear-gradient(160deg, #ecc767, var(--citrine)); }
+  .crystal.c5{ background: linear-gradient(160deg, #eba8c0, var(--rose)); }
+
+  @keyframes pop{
+    0%{ transform: scale(1); opacity:1; }
+    100%{ transform: scale(0.15); opacity:0; }
+  }
+  .crystal.matched{ animation: pop 0.28s ease forwards; }
+
+  @keyframes fallIn{
+    0%{ transform: translateY(-140%); opacity: 0; }
+    100%{ transform: translateY(0); opacity: 1; }
+  }
+  .crystal.falling{ animation: fallIn 0.32s ease; }
+
+  @keyframes shake{
+    0%,100%{ transform: translateX(0); }
+    25%{ transform: translateX(-6px); }
+    75%{ transform: translateX(6px); }
+  }
+  .cell.invalid .crystal{ animation: shake 0.25s ease; }
+
+  .overlay{
+    position:absolute;
+    inset:0;
+    background: rgba(15, 9, 20, 0.86);
+    border-radius: 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 20px;
+    backdrop-filter: blur(2px);
+  }
+  .overlay.hidden{ display:none; }
+
+  .overlay-card{
+    text-align:center;
+    max-width: 320px;
+  }
+  .overlay-card h2{
+    font-family:'Cinzel', serif;
+    color: var(--gold-soft);
+    font-size: 24px;
+    margin: 0 0 8px;
+  }
+  .overlay-card p{
+    color: #cfc3de;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 18px;
+  }
+  .overlay-card .score-line{
+    font-family:'Cinzel', serif;
+    color: var(--gold-soft);
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  #message{
+    margin-top: 16px;
+    min-height: 22px;
+    font-size: 14px;
+    color: var(--gold-soft);
+    text-align:center;
+  }
+
+  button.primary{
+    background: linear-gradient(160deg, var(--gold-soft), var(--gold));
+    border: none;
+    padding: 10px 24px;
+    border-radius: 999px;
+    font-family:'Quicksand', sans-serif;
+    font-weight: 700;
+    color: #2a1a10;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    font-size: 15px;
+  }
+  button.primary:hover{ filter: brightness(1.05); }
+
+  button.ghost{
+    background: transparent;
+    border: 1px solid rgba(224,168,61,0.4);
+    color: var(--gold-soft);
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-family:'Quicksand', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .controls-row{
+    margin-top: 14px;
+    display:flex;
+    gap: 10px;
+  }
+
+  .ad-slot{
+    margin-top: 32px;
+    width: min(420px, 92vw);
+    min-height: 90px;
+    border: 1px dashed rgba(224,168,61,0.4);
+    border-radius: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #8a7ba3;
+    text-align: center;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Arcane Match</h1>
+  <div class="subtitle">Alchemist's Crystal Trial</div>
+
+  <div class="hud">
+    <div class="stat"><div class="label">Level</div><div class="value" id="levelNum">1</div></div>
+    <div class="stat"><div class="label">Score</div><div class="value" id="score">0</div></div>
+    <div class="stat"><div class="label">Moves</div><div class="value" id="moves">20</div></div>
+    <div class="stat"><div class="label">Best</div><div class="value" id="best">0</div></div>
+    <button class="icon-btn" id="muteBtn" title="Toggle sound">🔊</button>
+  </div>
+
+  <div class="cauldron-wrap">
+    <div class="cauldron-label"><span>Cauldron Goal</span><span id="goalText">0 / 600</span></div>
+    <div class="cauldron-bar"><div class="cauldron-fill" id="cauldronFill"></div></div>
+  </div>
+
+  <div class="game-wrap">
+    <div id="board"></div>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card" id="overlayCard">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <div id="message">&nbsp;</div>
+  <div class="controls-row">
+    <button class="ghost" id="restartAllBtn">Restart from Level 1</button>
+  </div>
+
+  <div class="ad-slot" id="adSlot">Ad space — place your ad network's embed code here<br>(also shown on the level-complete / game-over overlay)</div>
+
+<script>
+(function(){
+  const SIZE = 8;
+  const TYPES = 6;
+
+  const LEVELS = [
+    { goal: 400,  moves: 20 },
+    { goal: 600,  moves: 20 },
+    { goal: 900,  moves: 22 },
+    { goal: 1300, moves: 22 },
+    { goal: 1800, moves: 24 },
+    { goal: 2400, moves: 24 }
+  ];
+
+  function getLevelConfig(n){
+    if(n <= LEVELS.length) return LEVELS[n-1];
+    const last = LEVELS[LEVELS.length - 1];
+    const extra = n - LEVELS.length;
+    return {
+      goal: Math.round(last.goal * Math.pow(1.25, extra)),
+      moves: last.moves + Math.min(extra, 4)
+    };
+  }
+
+  let board = [];
+  let score = 0;
+  let moves = 20;
+  let GOAL = 600;
+  let level = Number(localStorage.getItem('arcaneMatchLevel') || 1);
+  let best = Number(localStorage.getItem('arcaneMatchBest') || 0);
+  let muted = localStorage.getItem('arcaneMatchMuted') === '1';
+  let selected = null;
+  let busy = false;
+  let chainCount = 0;
+  let gameState = 'start'; // start | playing | levelComplete | gameOver
+  let pendingFalling = new Set();
+
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const movesEl = document.getElementById('moves');
+  const bestEl = document.getElementById('best');
+  const levelNumEl = document.getElementById('levelNum');
+  const messageEl = document.getElementById('message');
+  const cauldronFill = document.getElementById('cauldronFill');
+  const goalText = document.getElementById('goalText');
+  const overlay = document.getElementById('overlay');
+  const overlayCard = document.getElementById('overlayCard');
+  const muteBtn = document.getElementById('muteBtn');
+  const restartAllBtn = document.getElementById('restartAllBtn');
+
+  bestEl.textContent = best;
+  levelNumEl.textContent = level;
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+
+  // ---------- sound ----------
+  let audioCtx;
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, duration, type, vol){
+    if(muted) return;
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.value = vol == null ? 0.15 : vol;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + (duration || 0.12));
+    o.stop(audioCtx.currentTime + (duration || 0.12) + 0.02);
+  }
+  function playMatchSound(chain){
+    beep(420 + Math.min(chain, 6) * 70, 0.15, 'triangle', 0.14);
+  }
+  function playInvalidSound(){
+    beep(140, 0.15, 'sawtooth', 0.09);
+  }
+  function playLevelCompleteFanfare(){
+    [523, 659, 784, 1046].forEach((f, i) => {
+      setTimeout(() => beep(f, 0.2, 'triangle', 0.16), i * 130);
+    });
+  }
+  function playGameOverSound(){
+    [300, 220, 160].forEach((f, i) => {
+      setTimeout(() => beep(f, 0.25, 'sine', 0.12), i * 140);
+    });
+  }
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    localStorage.setItem('arcaneMatchMuted', muted ? '1' : '0');
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+    if(!muted){ ensureAudio(); beep(500, 0.08, 'sine', 0.1); }
+  });
+
+  // ---------- board mechanics ----------
+  function randType(){ return Math.floor(Math.random() * TYPES); }
+  function idx(r, c){ return r * SIZE + c; }
+
+  function createBoardNoMatches(){
+    const b = new Array(SIZE * SIZE).fill(0);
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        let t, tries = 0;
+        do{
+          t = randType();
+          tries++;
+        } while(
+          tries < 20 && (
+            (c>=2 && b[idx(r,c-1)]===t && b[idx(r,c-2)]===t) ||
+            (r>=2 && b[idx(r-1,c)]===t && b[idx(r-2,c)]===t)
+          )
+        );
+        b[idx(r,c)] = t;
+      }
+    }
+    return b;
+  }
+
+  function render(fallingSet){
+    boardEl.innerHTML = '';
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        const i = idx(r,c);
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        if(selected && selected.r === r && selected.c === c) cell.classList.add('selected');
+
+        const crystal = document.createElement('div');
+        crystal.className = 'crystal c' + board[i];
+        if(fallingSet && fallingSet.has(i)) crystal.classList.add('falling');
+        cell.appendChild(crystal);
+
+        cell.addEventListener('click', onCellClick);
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function onCellClick(e){
+    if(busy || gameState !== 'playing' || moves <= 0) return;
+    ensureAudio();
+    const r = Number(e.currentTarget.dataset.r);
+    const c = Number(e.currentTarget.dataset.c);
+
+    if(!selected){
+      selected = {r, c};
+      render();
+      return;
+    }
+    if(selected.r === r && selected.c === c){
+      selected = null;
+      render();
+      return;
+    }
+    const adjacent = (Math.abs(selected.r - r) + Math.abs(selected.c - c)) === 1;
+    if(!adjacent){
+      selected = {r, c};
+      render();
+      return;
+    }
+    attemptSwap(selected, {r, c});
+  }
+
+  function attemptSwap(a, b){
+    busy = true;
+    swapCells(a, b);
+    const matches = findMatches();
+
+    if(matches.size === 0){
+      render();
+      const cellA = boardEl.querySelector(`.cell[data-r="${a.r}"][data-c="${a.c}"]`);
+      const cellB = boardEl.querySelector(`.cell[data-r="${b.r}"][data-c="${b.c}"]`);
+      if(cellA) cellA.classList.add('invalid');
+      if(cellB) cellB.classList.add('invalid');
+      playInvalidSound();
+      setTimeout(() => {
+        swapCells(a, b);
+        selected = null;
+        busy = false;
+        render();
+      }, 260);
+      return;
+    }
+
+    moves -= 1;
+    movesEl.textContent = moves;
+    selected = null;
+    chainCount = 0;
+    resolveMatches();
+  }
+
+  function swapCells(a, b){
+    const ai = idx(a.r, a.c), bi = idx(b.r, b.c);
+    const tmp = board[ai];
+    board[ai] = board[bi];
+    board[bi] = tmp;
+  }
+
+  function findMatches(){
+    const matched = new Set();
+    for(let r=0;r<SIZE;r++){
+      let runStart = 0;
+      for(let c=1;c<=SIZE;c++){
+        const prevT = board[idx(r,c-1)];
+        const curT = c < SIZE ? board[idx(r,c)] : null;
+        if(curT !== prevT){
+          if(c - runStart >= 3) for(let k=runStart;k<c;k++) matched.add(idx(r,k));
+          runStart = c;
+        }
+      }
+    }
+    for(let c=0;c<SIZE;c++){
+      let runStart = 0;
+      for(let r=1;r<=SIZE;r++){
+        const prevT = board[idx(r-1,c)];
+        const curT = r < SIZE ? board[idx(r,c)] : null;
+        if(curT !== prevT){
+          if(r - runStart >= 3) for(let k=runStart;k<r;k++) matched.add(idx(k,c));
+          runStart = r;
+        }
+      }
+    }
+    return matched;
+  }
+
+  function resolveMatches(){
+    const matches = findMatches();
+    if(matches.size === 0){
+      busy = false;
+      checkEndState();
+      render();
+      return;
+    }
+
+    chainCount += 1;
+    matches.forEach(i => {
+      const r = Math.floor(i / SIZE), c = i % SIZE;
+      const el = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"] .crystal`);
+      if(el) el.classList.add('matched');
+    });
+
+    score += matches.size * 10 * chainCount;
+    scoreEl.textContent = score;
+    updateCauldron();
+    playMatchSound(chainCount);
+    messageEl.textContent = chainCount > 1 ? `Combo x${chainCount}!` : 'Crystals align...';
+
+    setTimeout(() => {
+      collapseAndRefill(matches);
+      render(pendingFalling);
+      setTimeout(() => resolveMatches(), 260);
+    }, 220);
+  }
+
+  function collapseAndRefill(matches){
+    pendingFalling = new Set();
+    for(let c=0;c<SIZE;c++){
+      let writeRow = SIZE - 1;
+      for(let r=SIZE-1;r>=0;r--){
+        const i = idx(r,c);
+        if(!matches.has(i)){
+          const wi = idx(writeRow, c);
+          if(wi !== i) board[wi] = board[i];
+          writeRow--;
+        }
+      }
+      for(let r=writeRow;r>=0;r--){
+        const wi = idx(r,c);
+        board[wi] = randType();
+        pendingFalling.add(wi);
+      }
+    }
+  }
+
+  function updateCauldron(){
+    const pct = Math.min(100, Math.round((score / GOAL) * 100));
+    cauldronFill.style.width = pct + '%';
+    goalText.textContent = `${Math.min(score, GOAL)} / ${GOAL}`;
+  }
+
+  function saveBest(){
+    if(score > best){
+      best = score;
+      localStorage.setItem('arcaneMatchBest', String(best));
+      bestEl.textContent = best;
+    }
+  }
+
+  // ---------- level / game state ----------
+  function checkEndState(){
+    if(score >= GOAL){
+      gameState = 'levelComplete';
+      saveBest();
+      level += 1;
+      localStorage.setItem('arcaneMatchLevel', String(level));
+      playLevelCompleteFanfare();
+      messageEl.textContent = '';
+      showOverlay('complete');
+      return;
+    }
+    if(moves <= 0){
+      gameState = 'gameOver';
+      saveBest();
+      playGameOverSound();
+      messageEl.textContent = '';
+      showOverlay('over');
+    }
+  }
+
+  function loadLevel(n){
+    const cfg = getLevelConfig(n);
+    GOAL = cfg.goal;
+    moves = cfg.moves;
+    score = 0;
+    selected = null;
+    busy = false;
+    chainCount = 0;
+    board = createBoardNoMatches();
+    levelNumEl.textContent = n;
+    scoreEl.textContent = score;
+    movesEl.textContent = moves;
+    messageEl.textContent = 'Swap adjacent crystals to match 3 or more.';
+    updateCauldron();
+    render();
+  }
+
+  function showOverlay(kind){
+    overlay.classList.remove('hidden');
+    if(kind === 'start'){
+      overlayCard.innerHTML = `
+        <h2>Arcane Match</h2>
+        <p>Swap two adjacent crystals to line up 3 or more of the same kind. Chain cascades for combo bonuses and fill the cauldron before you run out of moves.</p>
+        <button class="primary" id="playBtn">${level > 1 ? 'Continue — Level ' + level : 'Begin Trial'}</button>
+      `;
+      document.getElementById('playBtn').addEventListener('click', () => {
+        ensureAudio();
+        overlay.classList.add('hidden');
+        gameState = 'playing';
+        loadLevel(level);
+      });
+    } else if(kind === 'complete'){
+      overlayCard.innerHTML = `
+        <h2>Trial Complete</h2>
+        <div class="score-line">Score: ${score}</div>
+        <p>The cauldron overflows with power. A new, tougher trial awaits.</p>
+        <button class="primary" id="nextBtn">Next Level — ${level}</button>
+      `;
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        gameState = 'playing';
+        loadLevel(level);
+      });
+    } else if(kind === 'over'){
+      overlayCard.innerHTML = `
+        <h2>Out of Moves</h2>
+        <div class="score-line">Score: ${score} / ${GOAL}</div>
+        <p>The trial resets. Try this level again, or start fresh.</p>
+        <button class="primary" id="retryBtn">Retry Level ${level}</button>
+      `;
+      document.getElementById('retryBtn').addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        gameState = 'playing';
+        loadLevel(level);
+      });
+    }
+  }
+
+  restartAllBtn.addEventListener('click', () => {
+    level = 1;
+    localStorage.setItem('arcaneMatchLevel', '1');
+    overlay.classList.add('hidden');
+    gameState = 'playing';
+    loadLevel(level);
+  });
+
+  // ---------- boot ----------
+  loadLevel(level);
+  gameState = 'start';
+  showOverlay('start');
+})();
+</script>
+
+</body>
+</html>
